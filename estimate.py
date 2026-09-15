@@ -114,27 +114,39 @@ def quantisation_floor(rates_path=CLEAN):
     return 1e4 * 0.5 * np.hypot(sd(sdr), sd(zar))
 
 
-def log_prediction(pred_index, for_date, params):
-    """Append-only. A row is written once and never rewritten."""
+def log_prediction(pred_index, for_date, params, latest_obs):
+    """Append-only. A row is written once and never rewritten.
+
+    latest_obs is the last date present in rates.csv when this ran. Recording it
+    is what makes the row self-describing: the same code predicts today's rate
+    if BoB has not published yet, and tomorrow's if it has, and those are
+    different claims. lead_days is the gap; bob_published_today says which case
+    this was.
+    """
     seen = set()
     if os.path.exists(PRED_LOG):
         with open(PRED_LOG) as f:
             seen = {r["for_date"] for r in csv.DictReader(f)}
     if for_date.isoformat() in seen:
-        print(f"prediction for {for_date} already logged — not overwriting")
+        print(f"prediction for {for_date} already logged - not overwriting")
         return
+
+    now = datetime.now()
+    lead = (for_date - latest_obs).days
     new = not os.path.exists(PRED_LOG)
     with open(PRED_LOG, "a", newline="") as f:
         w = csv.writer(f)
         if new:
-            w.writerow(["made_at", "for_date", "pred_log_index",
-                        "w", "crawl_pct", "window", "model"])
-        w.writerow([datetime.now().isoformat(timespec="seconds"), for_date.isoformat(),
+            w.writerow(["made_at", "for_date", "pred_log_index", "w",
+                        "crawl_pct", "window", "model",
+                        "latest_obs", "lead_days", "bob_published_today"])
+        w.writerow([now.isoformat(timespec="seconds"), for_date.isoformat(),
                     f"{pred_index:.8f}", f"{params['w']:.4f}",
-                    f"{params['crawl_pct']:.3f}", params["n"], "rolling-ols-v0"])
-    print(f"logged prediction for {for_date}")
-
-
+                    f"{params['crawl_pct']:.3f}", params["n"], "rolling-ols-v0",
+                    latest_obs.isoformat(), lead,
+                    "yes" if latest_obs == now.date() else "no"])
+    print(f"logged prediction for {for_date} "
+          f"({lead}d after last observation {latest_obs})")
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--window", type=int, default=90)
@@ -189,7 +201,7 @@ def main():
     print(f"  using w={cur['w']:.3f}, crawl={cur['crawl_pct']:+.2f} %/yr")
 
     if a.log:
-        log_prediction(pred, nxt, cur)
+        log_prediction(pred, nxt, cur, d[-1])
     else:
         print("  (not logged; pass --log to append to predictions.csv)")
 
