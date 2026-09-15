@@ -1,0 +1,6 @@
+raw/
+rolling.csv
+segments.csv
+run.log
+__pycache__/
+*.pyc

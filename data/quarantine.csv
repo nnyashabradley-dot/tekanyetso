@@ -1,0 +1,41 @@
+date,CHN,EUR,GBP,USD,ZAR,SDR,YEN,reason
+2001-01-03,,1.4117,0.1875,0.1972,0.1429,0.1248,21.48,"ZAR=0.1429 outside [0.5,3.0]; EUR=1.4117 outside [0.03,0.4]; EUR=1.4117 is 618.1% off local median 0.1966; GBP=0.1875 is 50.4% off local median 0.1247; USD=0.1972 is 5.9% off local median 0.1863; ZAR=0.1429 is 89.9% off local median 1.4130; SDR=0.1248 is 12.5% off local median 0.1427"
+2001-08-06,,0.1778,0.1221,0.1742,1.4405,0.1382,21.64,EUR=0.1778 is 10.2% off local median 0.1979
+2001-09-04,,0.1918,0.1193,0.1722,1.4619,0.135,0.2053,"YEN=0.2053 outside [3.0,40.0]; YEN=0.2053 is 99.0% off local median 20.8250"
+2001-10-05,,0.1786,0.1111,0.164,1.1578,0.1276,19.78,ZAR=1.1578 is 23.2% off local median 1.5081
+2001-11-07,,0.179,0.11,0.1611,1.5304,0.1261,0.1946,"YEN=0.1946 outside [3.0,40.0]; YEN=0.1946 is 99.0% off local median 19.5000"
+2001-12-19,,0.1545,0.0958,0.1394,1.7049,0.1102,17.87,SDR=0.1102 is 3.1% off local median 0.1138
+2001-12-20,,0.15,0.0931,0.1348,1.756,0.1068,17.34,EUR=0.15 is 6.5% off local median 0.1605; GBP=0.0931 is 5.8% off local median 0.0988; USD=0.1348 is 5.7% off local median 0.1429; SDR=0.1068 is 6.1% off local median 0.1138
+2001-12-21,,0.1459,0.0906,0.1314,1.8006,0.1041,17.0,EUR=0.1459 is 7.8% off local median 0.1582; GBP=0.0906 is 7.2% off local median 0.0976; USD=0.1314 is 7.3% off local median 0.1417; SDR=0.1041 is 7.4% off local median 0.1124; YEN=17.0 is 7.4% off local median 18.3550
+2002-01-03,,0.1543,0.0963,0.1395,1.7439,0.1108,18.4,SDR=0.1108 is 3.2% off local median 0.1145
+2002-01-23,,0.1598,0.0991,0.1418,1.6595,0.1137,19.0,EUR=0.1598 is 5.0% off local median 0.1683; SDR=0.1137 is 4.1% off local median 0.1185
+2003-08-15,,0.1828,0.1284,0.2057,0.2054,0.1496,24.47,"ZAR=0.2054 outside [0.5,3.0]; ZAR=0.2054 is 86.4% off local median 1.5100"
+2004-01-06,,0.1832,0.1284,0.2325,1.4668,0.1576,24.67,SDR=0.1576 is 3.3% off local median 0.1526
+2004-02-05,,0.1759,0.1203,0.2204,1.5086,0.1496,23.25,EUR=0.1759 is 6.0% off local median 0.1659; GBP=0.1203 is 5.6% off local median 0.1139; SDR=0.1496 is 5.1% off local median 0.1423
+2004-02-06,,0.1606,0.1099,0.2015,1.4036,0.1369,21.39,SDR=0.1369 is 4.5% off local median 0.1433
+2004-02-09,,0.1583,0.1087,0.2014,1.409,0.1359,21.28,SDR=0.1359 is 3.2% off local median 0.1405
+2005-05-27,,0.1661,0.1142,0.2081,1.3766,0.1419,22.44,EUR=0.1661 is 5.9% off local median 0.1569; GBP=0.1142 is 6.1% off local median 0.1076; USD=0.2081 is 5.8% off local median 0.1966; ZAR=1.3766 is 6.2% off local median 1.2966; SDR=0.1419 is 6.6% off local median 0.1331
+2005-05-30,,0.1469,0.1009,0.184,1.2164,0.1239,19.86,EUR=0.1469 is 6.3% off local median 0.1568; GBP=0.1009 is 6.1% off local median 0.1074; USD=0.184 is 5.8% off local median 0.1954; ZAR=1.2164 is 6.4% off local median 1.3002; SDR=0.1239 is 6.7% off local median 0.1328
+2007-05-07,,0.1213,0.0827,0.165,1.1434,0.1038,19.79,SDR=0.1038 is 3.8% off local median 0.1079
+2008-10-15,,0.0993,0.0774,0.1352,1.2338,0.0884,13.75,SDR=0.0884 is 3.0% off local median 0.0858
+2008-10-16,,0.0922,0.0717,0.1236,1.305,0.0813,12.37,GBP=0.0717 is 5.2% off local median 0.0756; USD=0.1236 is 5.5% off local median 0.1308; SDR=0.0813 is 5.2% off local median 0.0858
+2008-10-20,,0.0954,0.0739,0.1288,1.2707,0.0846,13.15,SDR=0.0846 is 3.0% off local median 0.0821
+2008-10-23,,0.0914,0.0719,0.1172,1.3346,0.0785,11.47,USD=0.1172 is 5.4% off local median 0.1239; SDR=0.0785 is 4.8% off local median 0.0825; YEN=11.47 is 6.0% off local median 12.2050
+2008-10-24,,0.0918,0.0733,0.1169,1.336,0.0784,11.12,USD=0.1169 is 6.4% off local median 0.1249; SDR=0.0784 is 5.7% off local median 0.0832; YEN=11.12 is 8.6% off local median 12.1600
+2008-10-27,,0.094,0.075,0.1178,1.325,0.0793,10.98,USD=0.1178 is 5.6% off local median 0.1249; SDR=0.0793 is 4.6% off local median 0.0832; YEN=10.98 is 9.7% off local median 12.1600
+2011-09-22,,0.0989,0.0866,0.1339,1.106,0.0857,10.28,SDR=0.0857 is 3.2% off local median 0.0886
+2011-09-23,,0.0986,0.0864,0.1332,1.1092,0.0853,10.16,SDR=0.0853 is 3.3% off local median 0.0882
+2013-02-25,,0.0942,0.0822,0.1244,1.1064,0.821,11.72,"SDR=0.821 outside [0.02,0.3]; SDR=0.821 is 901.8% off local median 0.0819"
+2018-01-17,0.6631,0.0842,0.0739,0.1037,1.2469,0.0717,11.4,duplicate date (2 copies)
+2018-01-17,0.6588,0.0836,0.0743,0.1024,1.2597,0.0711,11.34,duplicate date (2 copies)
+2018-10-23,0.6436,0.0811,0.0721,0.0923,1.3545,0.0667,10.41,duplicate date (2 copies)
+2018-10-23,0.6483,0.0815,0.072,0.0933,1.3428,0.0672,10.49,duplicate date (2 copies)
+2019-02-09,0.648,0.0823,0.0743,0.0904,1.3724,0.0662,9.6,USD=0.0904 is 5.4% off local median 0.0956; SDR=0.0662 is 3.7% off local median 0.0688; YEN=9.6 is 8.8% off local median 10.5300
+2019-03-19,0.0933,0.0823,0.0704,0.0934,1.3471,0.067,10.39,"CHN=0.0933 outside [0.2,2.0]; CHN=0.0933 is 85.1% off local median 0.6269"
+2019-04-05,0.0939,0.0838,0.0718,0.0942,1.327,0.0679,10.52,"CHN=0.0939 outside [0.2,2.0]; CHN=0.0939 is 85.1% off local median 0.6315"
+2019-08-06,0.6484,0.0818,0.0818,0.0917,1.36,0.0666,9.76,GBP=0.0818 is 8.6% off local median 0.0754 (== EUR that day)
+2019-08-13,0.6422,0.0807,0.075,0.0904,1.3833,0.0657,9.52,duplicate date (2 copies)
+2019-08-13,0.637,0.0837,0.0724,0.0951,1.3179,0.0682,10.53,duplicate date (2 copies); USD=0.0951 is 5.1% off local median 0.0905; SDR=0.0682 is 3.4% off local median 0.0660; YEN=10.53 is 9.5% off local median 9.6150
+2019-12-16,0.6501,0.0834,0.0694,0.0929,1.3493,0.0929,10.16,SDR=0.0929 is 37.9% off local median 0.0673 (== USD that day)
+2020-02-19,0.6366,0.0842,0.0705,0.0908,1.3595,0.0699,10.0,SDR=0.0699 is 5.3% off local median 0.0664
+2023-11-02,0.5402,0.0695,0.0605,0.0737,1.3638,0.0605,11.08,SDR=0.0605 is 7.9% off local median 0.0561 (== GBP that day)
