@@ -92,8 +92,11 @@ def noise_sd(sdr, zar, w=0.5):
 class SegmentCost:
     """Weighted RSS of `ls = a + b*t - w*u` on any interval [i, j), in O(1)."""
 
-    def __init__(self, t_years, u, y, sigma):
+    def __init__(self, t_years, u, y, sigma, sdr=None, zar=None):
         self.n = n = len(y)
+        # Kept so fit() can recompute the noise floor from the segment's OWN
+        # fitted weight instead of the w = 0.5 placeholder used to build sigma.
+        self.sdr, self.zar = sdr, zar
         # Centring is free: shifting t, u or y only moves the per-segment
         # intercept, which is estimated separately in every segment, so w and b
         # are untouched.  It buys back several digits in the cumulative sums,
@@ -170,11 +173,23 @@ class SegmentCost:
         return chi2, beta
 
     def fit(self, i, j):
-        """Readable single-segment summary.  Direct WLS -- O(m), reporting only."""
+        """Readable single-segment summary.  Direct WLS -- O(m), reporting only.
+
+        The fit uses the same sigma the DP used, so the reported w and crawl are
+        exactly the ones the segmentation was chosen on.  The DIAGNOSTIC floor is
+        then recomputed from that fitted w, because the floor genuinely depends
+        on it: noise = hypot((1-w)*s/SDR, w*s/ZAR), and the SDR term dominates
+        because SDR-per-Pula is ~22x smaller than ZAR-per-Pula.  Assuming w = 0.5
+        where the truth is 0.66 overstates the floor by ~40% and so understates
+        chi2/dof by ~2x -- in exactly the early segments worth diagnosing.
+        """
         X, y, sg = self.X[i:j], self.y[i:j], self.sigma[i:j]
         b, *_ = np.linalg.lstsq(X / sg[:, None], y / sg, rcond=None)
         resid = y - X @ b
         dof = max((j - i) - P, 1)
+        if self.sdr is not None:
+            w_hat = float(np.clip(-b[2], 0.0, 1.0))
+            sg = noise_sd(self.sdr[i:j], self.zar[i:j], w_hat)
         chi2 = float(((resid / sg) ** 2).sum())
         return {
             "i": i, "j": j, "n": j - i,
@@ -216,6 +231,129 @@ def segment_dp(cost, penalty, min_seg):
     return sorted(cuts)[:-1], float(F[n])
 
 
+
+# ---------------------------------------------------------------------------
+# PELT -- same optimum as segment_dp, with provably-safe pruning
+# ---------------------------------------------------------------------------
+
+PRUNE_TOL = 1e-5
+METHOD = "pelt"   # cost units; see note in segment_pelt
+
+
+def segment_pelt(cost, penalty, min_seg, delay=True):
+    """Exact segmentation with pruning (Killick, Fearnhead and Eckley, 2012).
+
+    Same recursion and same answer as segment_dp.  The only difference is the
+    array of candidate starts handed to cost.cost_many at each tau: segment_dp
+    passes every admissible start, this passes the ones not yet ruled out.
+
+    The pruning rule.  After computing F[tau], a start s that was evaluated at
+    tau is marked dead if
+
+        F[s] + C(s, tau) + K  >  F[tau]
+
+    with K = 0 for this cost.  K = 0 needs C(s,t) + C(t,T) <= C(s,T) for every
+    s < t < T, which holds because the two-segment least squares fit can
+    always reproduce the one-segment fit.
+
+    The minimum segment length.  A dead start is NOT removed at once: it stays
+    usable until tau + min_seg and is dropped after that.  Whether that delay
+    is necessary, and why exactly min_seg is the right amount, is the
+    correctness argument for the writeup.  delay=False removes immediately;
+    it exists only so the tests can show what happens without the delay.
+
+    PRUNE_TOL.  The cumulative-sum cost is accurate to ~1e-6 in cost units, so
+    the inequality above can be violated by rounding.  Requiring the left side
+    to exceed the right by PRUNE_TOL makes pruning slightly more conservative,
+    never less, so it cannot cost exactness -- only a little speed.
+    """
+    n = cost.n
+    F = np.full(n + 1, np.inf)
+    F[0] = -penalty
+    prev = np.zeros(n + 1, dtype=int)
+
+    R = np.array([0], dtype=int)            # live candidate starts, ascending
+    dies_at = np.full(n + 1, np.iinfo(np.int64).max, dtype=np.int64)
+    self_sizes = []                          # |evaluated candidates| per tau
+
+    for tau in range(min_seg, n + 1):
+        usable = R[(R <= tau - min_seg) & (dies_at[R] > tau)]
+        self_sizes.append(usable.size)
+        if usable.size == 0:
+            continue
+        chi2, _ = cost.cost_many(usable, tau)
+        total = F[usable] + chi2 + penalty
+        k = int(np.argmin(total))
+        F[tau] = total[k]
+        prev[tau] = usable[k]
+
+        # prune: only starts actually evaluated at tau can be judged at tau
+        dead = usable[(F[usable] + chi2 > F[tau] + PRUNE_TOL)
+                      & (dies_at[usable] == np.iinfo(np.int64).max)]
+        dies_at[dead] = tau + min_seg if delay else tau + 1
+
+        R = R[dies_at[R] > tau + 1]
+        if np.isfinite(F[tau]):
+            R = np.append(R, tau)
+
+    cuts, tau = [], n
+    while tau > 0:
+        cuts.append(tau)
+        tau = int(prev[tau])
+    segment_pelt.last_sizes = self_sizes
+    return sorted(cuts)[:-1], float(F[n])
+
+
+def segment(cost, penalty, min_seg, method="pelt"):
+    """Dispatch.  Both methods return the same optimum; pelt is faster."""
+    if method == "dp":
+        return segment_dp(cost, penalty, min_seg)
+    return segment_pelt(cost, penalty, min_seg)
+
+
+def segment_refine(t, u, ls, sdr, zar, penalty, min_seg, iters=4, verbose=True,
+                   method="pelt"):
+    """Segment, then re-weight from the fitted weights, and repeat.
+
+    Why this is not cosmetic.  sigma is built assuming w = 0.5, but the noise
+    floor really is hypot((1-w)*s/SDR, w*s/ZAR), and SDR-per-Pula is ~22x
+    smaller than ZAR-per-Pula, so the SDR term dominates and sigma scales
+    roughly with (1-w).  Where the true w is 0.66, the assumed floor is ~40%
+    too LARGE, so those observations are down-weighted less than they deserve
+    -- the DP treats early data as more precise than it is and buys breaks
+    there too cheaply.  Post-2017, where w = 0.45, the error runs the other way.
+
+    Fixed point: segment with the current sigma, recompute sigma inside each
+    segment from that segment's own fitted w, segment again.  Converges in two
+    or three passes because w moves in 0.05 steps and the map is a contraction.
+
+    The exactness guarantee is untouched -- every pass is still the exact
+    optimum for the sigma it was given. What iterates is the weighting, not the
+    optimiser.
+    """
+    sigma = noise_sd(sdr, zar, 0.5)
+    cuts = None
+    evals = 0
+    for k in range(iters):
+        c = SegmentCost(t, u, ls, sigma, sdr, zar)
+        new_cuts, _ = segment(c, penalty, min_seg, method)
+        evals += c.n_evals
+        if verbose:
+            print(f"  pass {k+1}: {len(new_cuts)} breaks")
+        if new_cuts == cuts:
+            break
+        cuts = new_cuts
+        sigma = np.empty_like(sigma)
+        bnds = [0] + list(cuts) + [len(ls)]
+        for i in range(len(bnds) - 1):
+            sl = slice(bnds[i], bnds[i + 1])
+            w_hat = float(np.clip(c.fit(bnds[i], bnds[i + 1])["w"], 0.0, 1.0))
+            sigma[sl] = noise_sd(sdr[sl], zar[sl], w_hat)
+    out = SegmentCost(t, u, ls, sigma, sdr, zar)
+    out.n_evals = evals        # total across passes, so the report is honest
+    return cuts, out
+
+
 def segment_brute(cost, penalty, min_seg, max_k=3):
     """Exhaustive search over partitions.  Tiny n only -- a correctness oracle."""
     n = cost.n
@@ -249,7 +387,7 @@ def load(path=CLEAN, start=None, end=None):
     sdr = np.array([float(rows[k]["SDR"]) for k in keep])
     t = np.array([(x - d[0]).days for x in d], dtype=float) / 365.0
     lz, ls = np.log(zar), np.log(sdr)
-    return d, t, lz - ls, ls, noise_sd(sdr, zar)
+    return d, t, lz - ls, ls, noise_sd(sdr, zar), sdr, zar
 
 
 def make_synthetic(segments, n_per=400, seed=0, quantise=True):
@@ -283,7 +421,7 @@ def make_synthetic(segments, n_per=400, seed=0, quantise=True):
         # The actual noise mechanism, not an additive Gaussian stand-in.
         sdr, zar = np.round(sdr, 4), np.round(zar, 4)
         ls, lz = np.log(sdr), np.log(zar)
-    return t, lz - ls, ls, noise_sd(sdr, zar), truth
+    return t, lz - ls, ls, noise_sd(sdr, zar), sdr, zar, truth
 
 
 # ---------------------------------------------------------------------------
@@ -313,8 +451,8 @@ def self_test():
     print("   Tolerance is in COST units, not relative.  The DP only ever compares")
     print("   costs against the penalty, so an error is harmless until it is a")
     print("   material fraction of one penalty term.")
-    t, u, ls, sg, _ = make_synthetic([(0.45, -1.51), (0.50, -2.76)], n_per=500, seed=1)
-    c = SegmentCost(t, u, ls, sg)
+    t, u, ls, sg, sdr, zar, _ = make_synthetic([(0.45, -1.51), (0.50, -2.76)], n_per=500, seed=1)
+    c = SegmentCost(t, u, ls, sg, sdr, zar)
     pen = P * np.log(c.n)
     rng = np.random.default_rng(7)
     wc = wb = 0.0
@@ -335,8 +473,8 @@ def self_test():
     print("   PASS\n" if wc < 1e-3 * pen and wb < 1e-9 else "   FAIL\n")
 
     print("2. dynamic program == exhaustive search on a small series")
-    t, u, ls, sg, _ = make_synthetic([(0.45, -1.51), (0.50, -2.76)], n_per=60, seed=3)
-    c = SegmentCost(t, u, ls, sg)
+    t, u, ls, sg, sdr, zar, _ = make_synthetic([(0.45, -1.51), (0.50, -2.76)], n_per=60, seed=3)
+    c = SegmentCost(t, u, ls, sg, sdr, zar)
     pen = P * np.log(c.n)
     dc, dv = segment_dp(c, pen, min_seg=20)
     bc, bv = segment_brute(c, pen, min_seg=20, max_k=3)
@@ -349,8 +487,8 @@ def self_test():
     print("3. a series with no break gets no break (5 seeds)")
     bad = []
     for seed in range(5):
-        t, u, ls, sg, _ = make_synthetic([(0.50, -2.76)], n_per=600, seed=seed)
-        c = SegmentCost(t, u, ls, sg)
+        t, u, ls, sg, sdr, zar, _ = make_synthetic([(0.50, -2.76)], n_per=600, seed=seed)
+        c = SegmentCost(t, u, ls, sg, sdr, zar)
         cuts, _ = segment_dp(c, P * np.log(c.n), min_seg=90)
         if cuts:
             bad.append((seed, cuts))
@@ -358,9 +496,36 @@ def self_test():
     ok &= not bad
     print("   PASS\n" if not bad else "   FAIL\n")
 
-    print("4. chi2/dof == 1 when sigma is right")
-    t, u, ls, sg, _ = make_synthetic([(0.50, -2.76)], n_per=1500, seed=2)
-    c = SegmentCost(t, u, ls, sg)
+    print("4. PELT == DP == exhaustive search")
+    t, u, ls, sg, sdr, zar, _ = make_synthetic([(0.45, -1.51), (0.50, -2.76)], n_per=60, seed=3)
+    c = SegmentCost(t, u, ls, sg, sdr, zar)
+    pen = P * np.log(c.n)
+    pc, pv = segment_pelt(c, pen, min_seg=20)
+    bc, bv = segment_brute(c, pen, min_seg=20, max_k=3)
+    good = pc == bc and abs(pv - bv) < 1e-6
+    mism = 0
+    rng = np.random.default_rng(0)
+    for seed in range(12):
+        segs = [(float(rng.choice([0.45, 0.5, 0.55, 0.6])), float(rng.uniform(-5, 1)))
+                for _ in range(int(rng.integers(1, 5)))]
+        t, u, ls, sg, sdr, zar, _ = make_synthetic(segs, n_per=int(rng.integers(60, 160)),
+                                                   seed=seed)
+        for m in (20, 90):
+            for mult in (1, 10):
+                c = SegmentCost(t, u, ls, sg, sdr, zar)
+                pen = mult * P * np.log(c.n)
+                a_, fa = segment_dp(c, pen, m)
+                b_, fb = segment_pelt(c, pen, m)
+                mism += (a_ != b_) or abs(fa - fb) > 1e-6
+    print(f"   PELT vs exhaustive: cuts={pc} vs {bc}")
+    print(f"   PELT vs DP over 48 synthetic configurations: {mism} mismatches")
+    good = good and mism == 0
+    ok &= good
+    print("   PASS\n" if good else "   FAIL -- PELT is not exact\n")
+
+    print("5. chi2/dof == 1 when sigma is right")
+    t, u, ls, sg, sdr, zar, _ = make_synthetic([(0.50, -2.76)], n_per=1500, seed=2)
+    c = SegmentCost(t, u, ls, sg, sdr, zar)
     f = c.fit(0, c.n)
     print(f"   chi2/dof = {f['chi2_dof']:.3f}   resid {f['rmse_bp']:.2f} bp"
           f"   vs floor {f['floor_bp']:.2f} bp")
@@ -372,8 +537,8 @@ def self_test():
 
 def synthetic_run(min_seg, mult):
     segs = [(0.55, -0.16), (0.55, 0.00), (0.50, 0.26), (0.45, -1.51), (0.50, -2.76)]
-    t, u, ls, sg, truth = make_synthetic(segs, n_per=400, seed=11)
-    c = SegmentCost(t, u, ls, sg)
+    t, u, ls, sg, sdr, zar, truth = make_synthetic(segs, n_per=400, seed=11)
+    c = SegmentCost(t, u, ls, sg, sdr, zar)
     pen = mult * P * np.log(c.n)
     print(f"n={c.n}, true breaks at {[x['start'] for x in truth[1:]]}, "
           f"penalty={pen:.1f} ({mult}x BIC), min_seg={min_seg}")
@@ -381,7 +546,7 @@ def synthetic_run(min_seg, mult):
           "      ~3.6 bp of rounding noise.  That is the hard case.\n")
 
     t0 = time.perf_counter()
-    cuts, _ = segment_dp(c, pen, min_seg)
+    cuts, _ = segment(c, pen, min_seg, METHOD)
     dt = time.perf_counter() - t0
     print(f"found {len(cuts)} breaks in {dt:.1f}s, {c.n_evals:,} cost evaluations")
     print(f"cuts: {list(map(int, cuts))}\n")
@@ -403,7 +568,7 @@ def synthetic_run(min_seg, mult):
 def sweep(cost, min_seg):
     print(f"  {'mult':>6}{'penalty':>10}{'breaks':>8}")
     for mult in (1, 2, 5, 10, 20, 50, 100, 200, 500):
-        cuts, _ = segment_dp(cost, mult * P * np.log(cost.n), min_seg)
+        cuts, _ = segment(cost, mult * P * np.log(cost.n), min_seg, METHOD)
         print(f"  {mult:>6}{mult * P * np.log(cost.n):>10.0f}{len(cuts):>8}")
 
 
@@ -421,15 +586,25 @@ def main():
     ap.add_argument("--from", dest="start", type=date.fromisoformat)
     ap.add_argument("--to", dest="end", type=date.fromisoformat)
     ap.add_argument("--data", default=CLEAN)
+    ap.add_argument("--refine", action="store_true",
+                    help="iterate the noise weighting from the fitted weights. "
+                         "sigma is built assuming w=0.5; where w is really 0.66 "
+                         "that makes early observations look more precise than "
+                         "they are, and the DP buys breaks there too cheaply.")
+    ap.add_argument("--method", choices=["pelt", "dp"], default="pelt",
+                    help="pelt (default) and dp return identical answers; "
+                         "dp is the quadratic reference implementation")
     a = ap.parse_args()
+    global METHOD
+    METHOD = a.method
 
     if a.self_test:
         sys.exit(0 if self_test() else 1)
     if a.synthetic:
         return synthetic_run(a.min_seg, a.mult)
 
-    d, t, u, ls, sg = load(a.data, a.start, a.end)
-    c = SegmentCost(t, u, ls, sg)
+    d, t, u, ls, sg, sdr, zar = load(a.data, a.start, a.end)
+    c = SegmentCost(t, u, ls, sg, sdr, zar)
     print(f"{c.n} observations, {d[0]} .. {d[-1]}")
     print(f"rounding floor: {1e4*sg[0]:.2f} bp at the start, "
           f"{1e4*sg[-1]:.2f} bp at the end\n")
@@ -439,9 +614,12 @@ def main():
 
     pen = a.mult * P * np.log(c.n)
     t0 = time.perf_counter()
-    cuts, _ = segment_dp(c, pen, a.min_seg)
+    if a.refine:
+        cuts, c = segment_refine(t, u, ls, sdr, zar, pen, a.min_seg, method=METHOD)
+    else:
+        cuts, _ = segment(c, pen, a.min_seg, METHOD)
     dt = time.perf_counter() - t0
-    print(f"penalty {pen:.1f} ({a.mult}x BIC), min_seg {a.min_seg}")
+    print(f"penalty {pen:.1f} ({a.mult}x BIC), min_seg {a.min_seg}, method {METHOD}")
     print(f"{len(cuts)} breaks in {dt:.1f}s, {c.n_evals:,} cost evaluations\n")
     report(c, cuts, d)
 

@@ -40,7 +40,11 @@ the announced rate closely.
 | July 2025 | 2025-07-30 | -2.77 | -2.76 |
 
 Announced dates are month precision, so a detected date within a month of the
-announcement counts as a match. Eleven of the fourteen land within about a week.
+announcement counts as a match. Measured from the first day of the announced
+month, eight of the fourteen land within a week and thirteen within a month.
+The exception is April 2010, detected 41 days late on 12 May.
+(Corrected 21 September 2026. An earlier version of this section said eleven
+landed within about a week; that count was not checked and was wrong.)
 
 Recall is therefore 14 out of 14. Precision is harder to state, because two of the
 sixteen breaks are not announced crawl changes. One of them is a real finding

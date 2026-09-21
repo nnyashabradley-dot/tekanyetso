@@ -15,8 +15,11 @@ so w = -coef(u) and the annual rate of crawl is 365*b. The sum-to-one
 constraint is imposed by construction, not estimated, which removes the
 degree of freedom that would otherwise make w and the crawl collinear.
 
-t is in CALENDAR days. The crawl is an annualised continuous drift applied
-per calendar day; using trading days puts the estimate out by ~45 percent (365/252).
+t is in CALENDAR days, which recovers the annual rate correctly. The Bank in
+fact steps the parity once per published day, not per calendar day (FINDINGS
+section 3), so this model over-predicts the crawl across weekends; backtest.py
+measures the cost. Annualising a per-publication slope by 365 rather than by
+publications per year would put the rate out by about 45 percent (365/252).
 
 Usage:  python3 estimate.py [--window 90] [--log]
 """

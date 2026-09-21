@@ -1,157 +1,121 @@
 # Tekanyetso
 
-Recovering the Bank of Botswana's crawling-band fixing rule from published data,
-detecting when its parameters change, and forecasting the next published rate.
+Recovering the Bank of Botswana's crawling-peg rule from its own published
+exchange rates, detecting when the Bank changes the rule's settings without
+being told, and predicting the next published rate in public before it appears.
 
-## Week 1 status
+<!-- SCOREBOARD:START -->
 
-Data source settled, formula recovered, `§2.2` answered. See "Findings" below.
+## Live track record
+
+*Updated 2026-09-21 09:59. Latest Bank publication: 2026-09-18.*
+
+- **5 predictions scored.** Mean absolute error 1.53 bp, RMS 1.76 bp, mean -0.68 bp.
+- For scale: the same model's out-of-sample RMS over 2011-2026 in the backtest is 3.56 bp, and the Bank's own four-decimal rounding puts a floor of about 3 bp under any prediction anchored on a published rate.
+- **Coverage: 5 of 6 publication days predicted.** Missed: 2026-09-17.
+- Scheduled predictions run at 09:00 Gaborone time; the Made column shows the actual time. A *same day* prediction was made when the Bank's file did not yet contain that day's rate.
+
+| Target date | Made | Predicted | Error (bp) |
+|---|---|---:|---:|
+| 2026-09-21 | 2026-09-19 09:00 | -1.357263 | pending |
+| 2026-09-18 | 2026-09-18 09:00 (same day) | -1.356616 | -0.17 |
+| 2026-09-16 | 2026-09-15 10:20 | -1.354681 | -1.16 |
+| 2026-09-15 | 2026-09-15 09:00 (same day) | -1.354924 | -2.78 |
+| 2026-09-14 | 2026-09-12 09:05 | -1.353263 | +2.12 |
+| 2026-09-11 | 2026-09-10 22:28 | -1.345392 | -1.41 |
+
+Every prediction ever made is in `predictions.csv`, which is append-only; its git history shows when each row was written.
+
+<!-- SCOREBOARD:END -->
+
+## What this is
+
+Since 2005 the Pula has been tied to a basket of the South African rand and the
+IMF's SDR, and the peg is moved down a little every day at an announced annual
+rate of crawl. The Bank announces the weights and the crawl rate in general
+terms. It does not publish the daily arithmetic, the exact dates it changes its
+settings, or how tightly it holds to its own formula.
+
+The rule turns out to be
+
+    w * log(ZAR per Pula) + (1 - w) * log(SDR per Pula)  =  a + b * t
+
+and it holds to within the Bank's own four-decimal rounding. Everything else
+follows from estimating `w` and `b` and finding the days they change.
+
+## Results
+
+Details, evidence and caveats are in [`FINDINGS.md`](FINDINGS.md) and
+[`RESULTS.md`](RESULTS.md).
+
+- **Every announced change of crawl rate since 2005 is found from the data
+  alone**, 14 out of 14: eight within a week of the start of the announced month,
+  thirteen within a month.
+- **The basket was reweighted in January 2025 without an announcement**, six
+  months before the July 2025 crawl change it had previously been attributed to.
+- **The Bank steps the peg once per published day, not once per calendar day.**
+  Over the whole post-2005 history a trading-day model beats a calendar-day model
+  by 284 log-likelihood units with the same number of parameters.
+- **PELT returns exactly the same breakpoints as the exhaustive dynamic program**
+  with 10 to 30 times fewer cost evaluations, and its minimum-segment handling is
+  shown to be necessary by a concrete counterexample.
+- **In a backtest that provably never sees the future**, a Kalman filter predicts
+  the next published rate with 2.68 bp RMS error, against 3.56 bp for the model
+  that currently writes the live log.
+
+## Run it
+
+Python 3 and numpy. `figures.py` also needs matplotlib.
 
 ```
 pip install numpy
-python3 fetch.py            # pulls BoB, stores raw + clean, validates
-python3 estimate.py         # recovers w and the crawl, writes rolling.csv
-python3 estimate.py --log   # also appends tomorrow's prediction (run daily)
+python fetch.py                          # pull the Bank's table, validate, store
+python estimate.py                       # rolling estimate of w and the crawl
+python estimate.py --log                 # also append tomorrow's prediction
+python segment.py --from 2005-06-01 --mult 10   # find the policy changes (PELT)
+python kalman.py                         # time-varying w and crawl
+python backtest.py --check-live          # no-lookahead backtest, all models
+python bench_pelt.py                     # PELT against the exact DP
+python scoreboard.py                     # refresh the track record above
+python figures.py                        # figures for the writeup
 ```
 
-## The data
+Every analysis script has a `--self-test` or a built-in check:
+`segment.py --self-test`, `kalman.py --self-test`, `diagnose.py --self-test`,
+and `backtest.py` checks its own blindness on every run.
 
-Everything comes from **one** Bank of Botswana table:
-`https://www.bankofbotswana.bw/content/exchange-rates`, CSV export at
-`/export/exchange-rates.csv`. It carries CHN, EUR, GBP, USD, ZAR, SDR and YEN
-per Pula, on ~254 pages of 25 rows, back to roughly 2001.
+## Checking the live log
 
-The IMF and ECB are **not needed**. BoB publishes its own SDR-per-Pula column
-alongside its rand column, on the same dates in the same convention, so the
-calendar-alignment and unit-conversion work budgeted in build-notes §1 does not
-arise. Both sides of the basket come from the same file.
+`predictions.csv` is append-only and committed by the scheduled daily run, so
+its git history shows when each row was written. `backtest.py --check-live`
+re-derives every logged prediction from the published data and reproduces each
+one to eight decimal places, which shows the logged numbers came from the model
+described here. The coverage line in the track record above shows any day on
+which no prediction was made.
 
-Convention: **foreign currency per Pula.** ZAR ≈ 1.23 (a Pula buys 1.23 rand),
-SDR ≈ 0.056.
+Git commit times are self-reported, so this is evidence that is hard to fake
+quietly, not a cryptographic guarantee.
 
-**Column order differs between the CSV export and the HTML table.** The export
-is `Date,CHN,EUR,GBP,USD,SDR,YEN,ZAR`; the web page is
-`Date,CHN,EUR,GBP,USD,ZAR,SDR,YEN`. Both label their headers correctly, so
-reading by name is safe and reading by position silently swaps ZAR and SDR —
-the two columns the model depends on. `fetch.py` reads by name.
+## Data
 
-**Inversion is caught on the column median, not per row.** A per-row range check
-cannot detect an inverted ZAR: 1/1.23 = 0.81 sits inside any plausible band,
-because a Pula and a rand are worth about the same. The median of the whole
-column cannot hide like that.
+One table: `https://www.bankofbotswana.bw/content/exchange-rates`, CSV export
+`/export/exchange-rates.csv`, quoted as foreign currency per Pula. The Bank
+publishes its own SDR column alongside the rand, so no IMF or ECB data is
+needed. `data/rates.csv` is append-only; `fetch.py` reports revisions rather than
+overwriting. `data/crawl_changes.csv` is the Bank's table of announced crawl
+changes, used only for scoring.
 
-## Data quality
+## Files
 
-The table contains real faults, so `fetch.py` screens rather than trusts. A bad
-row is **quarantined to `data/quarantine.csv`, never fatal** — one mistyped row
-in 2019 must not stop today's prediction from being logged. Only structural
-failures (too few rows, a whole column inverted) abort the run.
-
-Three fault modes, all confirmed present:
-
-| Fault | Example |
+| File | Purpose |
 |---|---|
-| Column contamination — a cell holds another column's value that day | 02 Nov 2023 `SDR = 0.0605`, which is that day's GBP; 16 Dec 2019 `SDR = 0.0929`, that day's USD |
-| Isolated typo | 05 Apr 2019 `CHN = 0.0939` against a 0.63 neighbourhood |
-| Duplicate date with different values | 13 Aug 2019 appears twice; the second copy's values match late Feb 2019 |
-
-**All three survive a per-row range check** — a contaminated SDR of 0.0605 is a
-perfectly plausible exchange rate. None survives comparison against the row's
-own neighbours, so the screen is a relative-deviation test against a local
-median, with per-column tolerances (SDR tightest, since it is a basket and
-barely moves; ZAR loosest). The neighbourhood is bounded to 21 calendar days so
-it never compares across the gaps in the series (BoB skipped 26 Sep – 02 Oct
-2025, and 17 – 22 Jul 2026).
-
-Contaminated SDR matters more than it looks: SDR ≈ 0.0557 enters the log basket
-with a sensitivity of about 5.18 bp per 1e−4, so an 0.0605 reading is roughly
-800 bp of error on the index — enough to wreck every window containing it,
-against a residual the model expects to be ~2.5 bp.
-
-Storage: `raw/` holds every download verbatim, named by date and content hash,
-never overwritten. `data/rates.csv` is append-only with a `first_seen` column;
-if BoB ever revises a published value, `fetch.py` reports it rather than
-silently backfilling. That is most of the benefit of bitemporal storage for
-almost none of the cost, because each fetch returns the full history.
-
-`data/crawl_changes.csv` is the ground-truth scoring key: 15 announced rate-of-
-crawl changes since 2005, from the Bank's Current Exchange Rate Framework page.
-Dates there are month-precision only, so changepoint scoring needs a tolerance
-band of roughly ±1 month.
-
-## The model
-
-The peg holds a weighted log basket on a linear path:
-
-    w·log(ZAR_per_Pula) + (1−w)·log(SDR_per_Pula) = a + b·t
-
-With `u = log(ZAR_pP) − log(SDR_pP)` this is one ordinary least squares fit:
-
-    log(SDR_pP) = a + b·t − w·u + e
-
-so `w = −coef(u)` and the annual crawl is `365·b`. Sum-to-one is imposed by
-construction rather than estimated, which is what removes the degree of freedom
-that build-notes §5 worried about.
-
-`t` is in **calendar** days. The crawl is an annualised continuous drift applied
-per calendar day; using trading days puts the estimate out by about 45 percent
-(365/252 ≈ 1.45).
-
-## Findings
-
-**1. It is the central fixing, not a market rate.** Build-notes §2.2 flagged this
-as a fork between two different projects. On the most recent 25 trading days the
-recovered parameters are `w = 0.496` and crawl `−2.76 %/yr`, against announced
-values of 50/50 and −2.76. Residual RMSE is **2.47 bp**.
-
-**2. The residual is at the measurement floor.** BoB rounds every column to four
-decimals. On SDR ≈ 0.0557 that is a coarse grid: uniform rounding to 1e−4
-implies about 2.6 bp of noise on the basket index. The observed 2.47 bp residual
-is *at* that floor, so the peg is holding as tightly as this data can resolve.
-The published number is mechanical. This is the good fork — the original plan
-works as written, and band width becomes a bounded-above question rather than
-the centre of the project.
-
-**3. Rounding, not collinearity, is the binding constraint.** The condition
-number of the demeaned regressors runs about 2 over recent windows — very well
-identified, because the rand/SDR spread moves a lot. But the crawl is only
-−2.76/365 ≈ **0.76 bp per day**, well under the 2.6 bp quantisation noise. The
-crawl is invisible day-to-day and only emerges once cumulative drift beats the
-rounding, which takes tens of days. Expect the weight to be pinned quickly and
-the crawl to need long windows. Retune §5's remedies accordingly: this argues
-for longer windows and for treating short-window crawl estimates as unreliable,
-not for regularising the weight.
-
-## Open question for week 2
-
-Given rand and SDR, the fixing is deterministic to ~2 bp — so "predict tomorrow's
-Pula rate" is only a real forecast if it is made without tomorrow's rand and SDR.
-Two targets, and they are different claims:
-
-- **Rule prediction** — tomorrow's log basket index equals today's plus one day
-  of crawl. Needs no FX forecast, is a claim about the *Bank*, and is testable
-  from this repo alone. This is what `estimate.py --log` currently writes, and
-  it can start today.
-- **Level prediction** — the headline "tomorrow's USD/BWP". This needs an
-  external market snapshot plus a timing story: *what* market data does BoB use,
-  and *when* is the rate published relative to it? If BoB fixes off the previous
-  close, this is nearly deterministic and the log becomes a precision
-  demonstration. If it fixes off same-morning rates, there is a genuine lead-time
-  problem worth solving.
-
-Settling the publication timing is the first thing to do in week 2. Until then
-the rule prediction is the honest one to log.
-
-## Known limitations
-
-- ~~The single-shot CSV export may only return the first page.~~ **Resolved
-  10 Sep 2026:** the export returns the entire history in one response. The
-  pagination fallback was removed — `?page=N&_format=csv` on `/content/...`
-  serves HTML, not CSV, so the old fallback would have parsed zero rows and
-  looked like an empty history. `fetch.py` now asserts a minimum row count
-  instead.
-- Basket **weight** change dates are only shown as a chart on the framework
-  page, not a table. They need reading off press releases, unlike the crawl
-  changes.
-- The 2.47 bp result is one recent 25-day window. It needs re-running across the
-  full history before it is a claim.
+| `fetch.py` | Download, screen and store the Bank's table |
+| `estimate.py` | Rolling OLS estimate; writes the daily prediction |
+| `segment.py` | Changepoint detection: exact DP and PELT |
+| `bench_pelt.py` | PELT against the DP: identical answers, cost curves |
+| `kalman.py` | Kalman filter with time-varying weight and crawl |
+| `backtest.py` | No-lookahead backtest of every model, with blindness check |
+| `diagnose.py` | Residual structure within a period |
+| `scoreboard.py` | Scores the live log and writes the track record above |
+| `figures.py` | Figures for the writeup |
+| `FINDINGS.md`, `RESULTS.md` | What was found, with evidence |
