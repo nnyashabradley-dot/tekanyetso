@@ -8,3 +8,4 @@ kalman.csv
 backtest.csv
 bench_pelt.csv
 *.bak-*
+PROGRESS.md
