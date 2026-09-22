@@ -8,16 +8,17 @@ being told, and predicting the next published rate in public before it appears.
 
 ## Live track record
 
-*Updated 2026-09-21 09:59. Latest Bank publication: 2026-09-18.*
+*Updated 2026-09-22 09:00. Latest Bank publication: 2026-09-21.*
 
-- **5 predictions scored.** Mean absolute error 1.53 bp, RMS 1.76 bp, mean -0.68 bp.
+- **6 predictions scored.** Mean absolute error 1.54 bp, RMS 1.74 bp, mean -0.30 bp.
 - For scale: the same model's out-of-sample RMS over 2011-2026 in the backtest is 3.56 bp, and the Bank's own four-decimal rounding puts a floor of about 3 bp under any prediction anchored on a published rate.
-- **Coverage: 5 of 6 publication days predicted.** Missed: 2026-09-17.
+- **Coverage: 6 of 7 publication days predicted.** Missed: 2026-09-17.
 - Scheduled predictions run at 09:00 Gaborone time; the Made column shows the actual time. A *same day* prediction was made when the Bank's file did not yet contain that day's rate.
 
 | Target date | Made | Predicted | Error (bp) |
 |---|---|---:|---:|
-| 2026-09-21 | 2026-09-19 09:00 | -1.357263 | pending |
+| 2026-09-22 | 2026-09-22 09:00 (same day) | -1.357726 | pending |
+| 2026-09-21 | 2026-09-19 09:00 | -1.357263 | +1.59 |
 | 2026-09-18 | 2026-09-18 09:00 (same day) | -1.356616 | -0.17 |
 | 2026-09-16 | 2026-09-15 10:20 | -1.354681 | -1.16 |
 | 2026-09-15 | 2026-09-15 09:00 (same day) | -1.354924 | -2.78 |
