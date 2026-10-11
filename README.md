@@ -8,7 +8,7 @@ being told, and predicting the next published rate in public before it appears.
 
 ## Live track record
 
-*Updated 2026-10-08 08:03. Latest Bank publication: 2026-10-07.*
+*Updated 2026-10-11 20:10. Latest Bank publication: 2026-10-07.*
 
 - **10 predictions scored.** Mean absolute error 3.92 bp, RMS 5.98 bp, mean -2.51 bp.
 - For scale: the same model's out-of-sample RMS over 2011-2026 in the backtest is 3.56 bp, and the Bank's own four-decimal rounding puts a floor of about 3 bp under any prediction anchored on a published rate.
