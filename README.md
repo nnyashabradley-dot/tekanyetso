@@ -8,16 +8,17 @@ being told, and predicting the next published rate in public before it appears.
 
 ## Live track record
 
-*Updated 2026-10-12 20:00. Latest Bank publication: 2026-10-12.*
+*Updated 2026-10-14 20:42. Latest Bank publication: 2026-10-14.*
 
-- **11 predictions scored.** Mean absolute error 3.64 bp, RMS 5.71 bp, mean -2.35 bp.
+- **12 predictions scored.** Mean absolute error 3.47 bp, RMS 5.49 bp, mean -2.29 bp.
 - For scale: the same model's out-of-sample RMS over 2011-2026 in the backtest is 3.56 bp, and the Bank's own four-decimal rounding puts a floor of about 3 bp under any prediction anchored on a published rate.
-- **Coverage: 11 of 20 publication days predicted.** Missed: 2026-09-17, 2026-09-23, 2026-09-25, 2026-09-29, 2026-10-02, 2026-10-06, 2026-10-07, 2026-10-09, 2026-10-12.
+- **Coverage: 12 of 22 publication days predicted.** Missed: 2026-09-17, 2026-09-23, 2026-09-25, 2026-09-29, 2026-10-02, 2026-10-06, 2026-10-07, 2026-10-09, 2026-10-12, 2026-10-14.
 - Scheduled predictions run at 09:00 Gaborone time; the Made column shows the actual time. A *same day* prediction was made when the Bank's file did not yet contain that day's rate.
 
 | Target date | Made | Predicted | Error (bp) |
 |---|---|---:|---:|
-| 2026-10-13 | 2026-10-12 20:00 | -1.330294 | pending |
+| 2026-10-15 | 2026-10-14 20:42 | -1.331416 | pending |
+| 2026-10-13 | 2026-10-12 20:00 | -1.330294 | -1.60 |
 | 2026-10-08 | 2026-10-08 08:01 (same day) | -1.331165 | -0.81 |
 | 2026-10-05 | 2026-10-03 09:30 | -1.347704 | -16.73 |
 | 2026-09-30 | 2026-10-01 09:00 | -1.347494 | no publication |
@@ -26,7 +27,6 @@ being told, and predicting the next published rate in public before it appears.
 | 2026-09-22 | 2026-09-22 09:00 (same day) | -1.357726 | -5.06 |
 | 2026-09-21 | 2026-09-19 09:00 | -1.357263 | +1.59 |
 | 2026-09-18 | 2026-09-18 09:00 (same day) | -1.356616 | -0.17 |
-| 2026-09-16 | 2026-09-15 10:20 | -1.354681 | -1.16 |
 
 Every prediction ever made is in `predictions.csv`, which is append-only; its git history shows when each row was written.
 
