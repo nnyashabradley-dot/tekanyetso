@@ -8,16 +8,17 @@ being told, and predicting the next published rate in public before it appears.
 
 ## Live track record
 
-*Updated 2026-11-10 11:44. Latest Bank publication: 2026-11-10.*
+*Updated 2026-11-11 11:00. Latest Bank publication: 2026-11-11.*
 
-- **23 predictions scored.** Mean absolute error 3.58 bp, RMS 4.94 bp, mean -1.35 bp.
+- **24 predictions scored.** Mean absolute error 3.48 bp, RMS 4.84 bp, mean -1.25 bp.
 - For scale: the same model's out-of-sample RMS over 2011-2026 in the backtest is 3.56 bp, and the Bank's own four-decimal rounding puts a floor of about 3 bp under any prediction anchored on a published rate.
-- **Coverage: 23 of 41 publication days predicted.** Missed: 2026-09-17, 2026-09-23, 2026-09-25, 2026-09-29, 2026-10-02, 2026-10-06, 2026-10-07, 2026-10-09, 2026-10-12, 2026-10-14, 2026-10-16, 2026-10-20, 2026-10-21, 2026-10-23, 2026-10-28, 2026-10-30, 2026-11-04, 2026-11-05.
+- **Coverage: 24 of 42 publication days predicted.** Missed: 2026-09-17, 2026-09-23, 2026-09-25, 2026-09-29, 2026-10-02, 2026-10-06, 2026-10-07, 2026-10-09, 2026-10-12, 2026-10-14, 2026-10-16, 2026-10-20, 2026-10-21, 2026-10-23, 2026-10-28, 2026-10-30, 2026-11-04, 2026-11-05.
 - Scheduled predictions run at 09:00 Gaborone time; the Made column shows the actual time. A *same day* prediction was made when the Bank's file did not yet contain that day's rate.
 
 | Target date | Made | Predicted | Error (bp) |
 |---|---|---:|---:|
-| 2026-11-11 | 2026-11-10 11:44 | -1.343343 | pending |
+| 2026-11-12 | 2026-11-11 11:00 | -1.343462 | pending |
+| 2026-11-11 | 2026-11-10 11:44 | -1.343343 | +0.98 |
 | 2026-11-10 | 2026-11-09 11:33 | -1.342866 | -4.46 |
 | 2026-11-09 | 2026-11-08 13:18 | -1.343649 | +2.00 |
 | 2026-11-06 | 2026-11-05 12:19 | -1.343054 | +2.98 |
@@ -26,7 +27,6 @@ being told, and predicting the next published rate in public before it appears.
 | 2026-10-29 | 2026-10-28 11:00 | -1.341562 | -2.06 |
 | 2026-10-27 | 2026-10-26 13:22 | -1.338004 | +6.90 |
 | 2026-10-26 | 2026-10-24 11:00 | -1.337645 | -6.44 |
-| 2026-10-22 | 2026-10-21 12:57 | -1.337098 | -0.26 |
 
 Every prediction ever made is in `predictions.csv`, which is append-only; its git history shows when each row was written.
 
